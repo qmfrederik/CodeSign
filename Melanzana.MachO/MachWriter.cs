@@ -140,7 +140,10 @@ namespace Melanzana.MachO
         }
 
         private static int AlignedSize(int size, bool is64bit)
-            => is64bit ? (size + 7) & ~7 : (size + 3) & ~3;
+            => is64bit ? AlignedSize(size, 8): AlignedSize(size, 4);
+
+        private static int AlignedSize(int size, int boundary)
+            => (size + boundary - 1) & ~(boundary - 1);
 
         private static void WriteDylibCommand(Stream stream, MachLoadCommandType commandType, MachDylibCommand dylibCommand, bool isLittleEndian, bool is64Bit)
         {
