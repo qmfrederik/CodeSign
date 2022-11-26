@@ -506,8 +506,18 @@ namespace Melanzana.MachO
                 stream.Write(machHeaderBuffer.AsSpan(0, bytesWritten));
             }
 
+#if DEBUG
+            // In debug mode, re-construct the load commands from scratch.  This will help in roundtrip tests.
+            // Unit tests validate the output against a reference file as we go, and a call to .Write() will trigger
+            // an assertion, allowing us catch any binary differences as they are being written out.
+            // This does require re-constructing the load commands from scratch.  We could use the same logic in
+            // debug and release mode if we can calculate the size of the load commands upfront (when writing the
+            // header), and directly write the load commands to the target stream.  Also saves a MemoryStream.
+            WriteLoadCommands(stream, objectFile);
+#else
             loadCommandsStream.Position = 0;
             loadCommandsStream.CopyTo(stream);
+#endif
 
             // Save the current position within the Mach-O file. Now we need to output the segments
             // and fill in the gaps as we go.
@@ -595,8 +605,10 @@ namespace Melanzana.MachO
                 sectionA.FileOffset < sectionB.FileOffset ? -1 :
                 (sectionA.FileOffset > sectionB.FileOffset ? 1 : 0));
 
-            foreach (var data in linkEditData)
+            for (int i = 0; i < linkEditData.Count; i++)
             {
+                var data = linkEditData[i];
+
                 if (data.FileOffset > currentOffset)
                 {
                     ulong paddingSize = data.FileOffset - currentOffset;
